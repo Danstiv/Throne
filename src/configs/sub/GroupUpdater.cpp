@@ -52,6 +52,24 @@ namespace Subscription {
     }
 
     void RawUpdater::update(const QString &str, bool needParse = true) {
+        std::shared_ptr<Configs::Profile> ent;
+
+        // Json
+        if (str.startsWith('{')) {
+            ent = Configs::ProfilesRepo::NewProfile("custom");
+            auto custom = ent->Custom();
+            auto obj = QString2QJsonObject(str);
+            if (obj.contains("outbounds")) {
+                custom->type = "fullconfig";
+                custom->config = str;
+            } else if (obj.contains("server")) {
+                custom->type = "outbound";
+                custom->config = str;
+            } else {
+                return;
+            }
+        }
+
         // Base64 encoded subscription
         if (auto str2 = DecodeB64IfValid(str); !str2.isEmpty()) {
             update(str2);
@@ -111,8 +129,6 @@ namespace Subscription {
             return;
         }
 
-        std::shared_ptr<Configs::Profile> ent;
-
         // Json base64 link format
         if (str.startsWith("json://")) {
             auto link = QUrl(str);
@@ -128,22 +144,6 @@ namespace Subscription {
             }
             if (ent->outbound->invalid) return;
             ent->outbound->ParseFromJson(data);
-        }
-
-        // Json
-        if (str.startsWith('{')) {
-            ent = Configs::ProfilesRepo::NewProfile("custom");
-            auto custom = ent->Custom();
-            auto obj = QString2QJsonObject(str);
-            if (obj.contains("outbounds")) {
-                custom->type = "fullconfig";
-                custom->config = str;
-            } else if (obj.contains("server")) {
-                custom->type = "outbound";
-                custom->config = str;
-            } else {
-                return;
-            }
         }
 
         // SOCKS
